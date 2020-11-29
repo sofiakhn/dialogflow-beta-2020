@@ -39,6 +39,7 @@ app.get('/', (req, res) => res.send('online'))
 app.post('/', express.json(), (req, res) => {
   const agent = new WebhookClient({ request: req, response: res })
 
+  //Welcome
   function welcome () {
     agent.add('Webhook works!')
     console.log(ENDPOINT_URL)
@@ -50,14 +51,13 @@ app.post('/', express.json(), (req, res) => {
     // You need to set this from password entity that you declare in DialogFlow
     password = null
     await getToken()
-    
+    agent.add("Logged you in. Webhook.")
     agent.add(token)
   }
 
 
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
-  // You will need to declare this `Login` content in DialogFlow to make this work
   intentMap.set('Login', login) 
   agent.handleRequest(intentMap)
 })
