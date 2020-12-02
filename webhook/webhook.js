@@ -46,20 +46,37 @@ app.post('/', express.json(), (req, res) => {
   }
 
   async function login () {
-    // You need to set this from `username` entity that you declare in DialogFlow
-    username = null
-    // You need to set this from password entity that you declare in DialogFlow
-    password = null
+    username = agent.parameters.username // is this right?
+    password = agent.parameters.password
     await getToken()
-    agent.add("Logged you in. Webhook.")
-    agent.add(token)
+    agent.add("Logged you in with Username:" + username + " Password: "+ password)
+
+    //do a PUT to the application endpoint 
+
+    agent.add('Token:' + token)
   }
 
+  async function queryCategories () {
 
+    let request = { 
+      method: 'GET'
+    }
+    const serverReturn = await fetch('https://mysqlcs639.cs.wisc.edu/categories',request)
+    const data = await serverReturn.json()
+    
+    var answer = data.categories
+    
+    console.log(data.categories)
+    agent.add("We sell lots of things! Categories include: " + answer)
+  }
+
+  
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   intentMap.set('Login', login) 
+  intentMap.set('Query Categories', queryCategories)
   agent.handleRequest(intentMap)
+
 })
 
 app.listen(process.env.PORT || 8080)
