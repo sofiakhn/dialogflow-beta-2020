@@ -76,7 +76,7 @@ app.post('/', express.json(), (req, res) => {
 
       agent.add("You've successfully logged in, " + username + "!")
       postMessage(new Date(), false, "You've successfully logged in, " + username + "!")
-      agent.add("Welcome to the WiscShop! I am your shopping assistant, and I can help you with everything from finding certain items, keeping track of your cart, navigating the site, and more! I love to shop and I love to help!")
+      agent.add("Welcome to WiscShop! I am your shopping assistant, and I can help you with a variety of tasks, just ask me and I'm happy to help!")
       postMessage(new Date(), false, "Welcome to the WiscShop! I am your shopping assistant, and I can help you with everything from finding certain items, keeping track of your cart, navigating the site, and more! I love to shop and I love to help!")
 
       // Clear the old messages
@@ -129,7 +129,7 @@ app.post('/', express.json(), (req, res) => {
       body: JSON.stringify({
         back: false,
         dialogflowUpdated: true,
-        page: "/categories'
+        page: "/categories"
       })
     }
     let serverReturn = await fetch(ENDPOINT_URL + '/application', request)
@@ -147,8 +147,8 @@ app.post('/', express.json(), (req, res) => {
             'Authorization': 'Basic '+ base64.encode(username + ':' + password),
             'x-access-token': token}
     }
-    const serverReturn = await fetch('https://mysqlcs639.cs.wisc.edu/application/products',request)
-    const data = await serverReturn.json()
+    let serverReturn = await fetch('https://mysqlcs639.cs.wisc.edu/application/products',request)
+    let data = await serverReturn.json()
     cartProducts = data.products
     console.log(data.products)
     var numItems = 0;
@@ -160,9 +160,10 @@ app.post('/', express.json(), (req, res) => {
     agent.add("Your cart has " + numItems + " items with a total of $" + totalCost+".") 
   }
 
-  async function queryProduct(){
+  
 
-    agent.add("We have that in stock! Pulling up reviews for you...")
+  async function queryProduct(){
+    postMessage(new Date(), true, agent.query)
 
     let request = { 
       method: 'GET',
@@ -231,7 +232,11 @@ app.post('/', express.json(), (req, res) => {
   async function navigatePage(){
     getToken()
     let category = agent.parameters.page
-
+    url = '/'+username+'/'+category
+    if(category == 'home'){
+      url = '/'+username 
+    } 
+       
     let request = { 
       method: 'PUT',
       headers: 
@@ -241,7 +246,7 @@ app.post('/', express.json(), (req, res) => {
       {
         "back": false,
         "dialogflowUpdated": true,
-        "page": '/'+username+'/'+category
+        "page": url
       })
     }
     let serverReturn = await fetch(ENDPOINT_URL + '/application',request)
@@ -282,6 +287,32 @@ app.post('/', express.json(), (req, res) => {
     }
   }
 
+  
+  async function navigateCart(){
+    let request = { 
+      method: 'PUT',
+      headers: 
+        {'Content-Type': 'application/json', 
+        'x-access-token':token}, 
+      body: JSON.stringify(
+      {
+        "back": false,
+        "dialogflowUpdated": true,
+        "page": '/'+username+'/cart'
+      })
+    }
+    let serverReturn = await fetch(ENDPOINT_URL + '/application',request)
+    let data = await serverReturn.json()
+
+    if(data.message==='Application state modified!'){
+      postMessage(new Date(), false, "Taking you to the your shopping cart.")
+      agent.add("Taking you to your shopping cart.")
+    }else{
+      postMessage(new Date(), false, "Sorry, I wasn't able to do that.")
+      agent.add("Sorry, I wasn't able to do that. Could you try again?")
+    }
+  }
+
   async function postMessage(date, isUser, text){
 
     console.log("Posted a message right now with text:" + text)
@@ -313,7 +344,47 @@ app.post('/', express.json(), (req, res) => {
     }
     await fetch(ENDPOINT_URL + '/application/messages', request)
   }
+
+  async function reviewCart(){
+    
+    let request = { 
+      method: 'PUT',
+      headers: 
+        {'Content-Type': 'application/json', 
+        'x-access-token':token}, 
+      body: JSON.stringify(
+      {
+        "back": false,
+        "dialogflowUpdated": true,
+        "page": '/'+username+'/cart-review'
+      })
+    }
+    let serverReturn = await fetch(ENDPOINT_URL + '/application',request)
+    let data = await serverReturn.json()
+
+    agent.add("Let's review what you've added to your cart. ")
+  }
   
+  async function confirmCart(){
+    let request = { 
+      method: 'PUT',
+      headers: 
+        {'Content-Type': 'application/json', 
+        'x-access-token':token}, 
+      body: JSON.stringify(
+      {
+        "back": false,
+        "dialogflowUpdated": true,
+        "page": '/'+username+'/cart-confirmed'
+      })
+    }
+    let serverReturn = await fetch(ENDPOINT_URL + '/application',request)
+    let data = await serverReturn.json()
+
+    agent.add("Looks great. Purchasing items in your cart...")
+    agent.add("You're all set! Thanks for shopping with us!")
+  }
+
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   intentMap.set('Login', login) 
@@ -321,10 +392,12 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('Tags Query', queryTags)
   intentMap.set('Cart Query', queryCart)
   intentMap.set('Product Query', queryProduct)
-  intentMap.set('Product Query - yes', queryReviews)
   intentMap.set('Pages Navigation', navigatePage)
   intentMap.set('Home Navigation', navigateHome)
-  intentMap.set('Narrow Tags', narrowTags)
+  intentMap.set('Cart Navigation', navigateCart)
+  intentMap.set('Review Cart', reviewCart)
+  intentMap.set('Confirm Cart', confirmCart)
+
 
   agent.handleRequest(intentMap)
 
